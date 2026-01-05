@@ -491,7 +491,6 @@ fn default_assertions_json() -> &'static str {
 {
   "_example": {
     "callback.outputFields.success": true,
-    "callback.outputFields.abc": 123
   }
 }
 "#
