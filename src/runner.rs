@@ -507,7 +507,7 @@ env:
 
 runtime:
   node: node
-  python: python3
+  python: python
 
 output:
   mode: simple   # stdout | pretty | simple | file
