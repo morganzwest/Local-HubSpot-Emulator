@@ -705,7 +705,7 @@ env:
 
 runtime:
   node: node
-  python: python3
+  python: python
 
 output:
   mode: simple # simple | pretty | stdout | file

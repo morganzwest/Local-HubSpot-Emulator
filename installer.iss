@@ -5,11 +5,11 @@
 
 [Setup]
 AppName=HSEmulate
-AppVersion=0.1.0
+AppVersion=0.1.1
 DefaultDirName={localappdata}\HSEmulate
 DisableProgramGroupPage=yes
 OutputDir=dist
-OutputBaseFilename=hsemulate-0.1.0-windows-x64
+OutputBaseFilename=hsemulate-0.1.1-windows-x64
 Compression=lzma
 SolidCompression=yes
 ArchitecturesInstallIn64BitMode=x64
