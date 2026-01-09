@@ -711,7 +711,7 @@ output:
   mode: simple # simple | pretty | stdout | file
   # file: results.json
 
-assertions_file: assertions.json
+# assertions_file: assertions.json
 
 snapshots:
   enabled: true
