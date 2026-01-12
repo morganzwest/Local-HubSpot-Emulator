@@ -70,5 +70,5 @@ Its purpose is fast, deterministic local iteration.
 
 ## Links
 
-- GitHub repository: [https://github.com/morganzwest/Local-HubSpot-Emulator](https://github.com/morganzwest/Local-HubSpot-Emulator)
-- Issues and feature requests: [https://github.com/morganzwest/Local-HubSpot-Emulator/issues](https://github.com/morganzwest/Local-HubSpot-Emulator/issues)
+- GitHub repository: [https://github.com/morganzwest/hsemulator](https://github.com/morganzwest/hsemulator)
+- Issues and feature requests: [https://github.com/morganzwest/hsemulator/issues](https://github.com/morganzwest/hsemulator/issues)
