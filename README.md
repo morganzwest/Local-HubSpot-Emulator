@@ -63,7 +63,7 @@ Do **not** use it to:
 
 📖 **Full documentation is available on Read the Docs:**
 
-👉 https://local-hubspot-emulator.readthedocs.io/
+👉 [Read our Documentation](https://hsemulator.readthedocs.io/)
 
 Start here if you want:
 - Installation instructions
