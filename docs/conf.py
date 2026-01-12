@@ -1,4 +1,4 @@
-project = "hsemulator"
+project = "HubSpot Emulator - hsemulate"
 author = "Morgan West"
 
 extensions = [

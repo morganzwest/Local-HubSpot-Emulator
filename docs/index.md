@@ -1,10 +1,10 @@
-# hsemulator
+# HubSpot Emulator
 
-Local runner for HubSpot Workflow Custom Code Actions.
+**hsemulator** is a local test runner for **HubSpot Workflow Custom Code Actions**.
 
-hsemulator lets you run the exact JavaScript or Python code used in HubSpot workflows locally, with support for fixtures, assertions, snapshots, execution budgets, and flaky-run detection.
+It allows you to run the _exact JavaScript or Python code_ you paste into HubSpot locally, using fixture events, with support for assertions, snapshots, execution budgets, and flaky-run detection.
 
-The goal is fast iteration and deterministic testing without relying on the HubSpot UI.
+The goal is to make developing HubSpot custom code feel closer to Lambda-style local development—without relying on the HubSpot UI for iteration.
 
 ---
 
@@ -14,13 +14,31 @@ Use hsemulator when you want to:
 
 - Develop and debug HubSpot custom code locally
 - Validate logic using real workflow event payloads
-- Catch regressions with assertions and snapshots
-- Enforce execution limits during development or CI
-- Reduce copy–paste cycles into HubSpot
+- Detect regressions with assertions and snapshots
+- Enforce performance limits (time / memory)
+- Reduce copy–paste cycles into the HubSpot UI
+
+Do **not** use it to:
+
+- Fully emulate HubSpot’s infrastructure
+- Mock HubSpot APIs or rate limits
+- Replace integration or end-to-end tests _(in development)_
 
 ---
 
-## Contents
+## Core Capabilities
+
+- Local execution of JS and Python custom code actions
+- Fixture-based event input
+- Assertions against output and metadata
+- Snapshot testing for regression detection
+- Execution budgets (time and memory)
+- Flaky-run detection via repeat execution
+- Machine-readable summary output (CI-friendly)
+
+---
+
+## Documentation
 
 ```{toctree}
 :maxdepth: 2
@@ -42,9 +60,11 @@ hsemulator is intentionally focused.
 
 It does **not** attempt to:
 
-- Fully emulate HubSpot’s runtime environment
-- Mock HubSpot APIs or infrastructure
-- Replace end-to-end or integration tests
+- Fully reproduce HubSpot’s runtime environment
+- Provide API mocks or request replay
+- Replace production monitoring or E2E tests
+
+Its purpose is fast, deterministic local iteration.
 
 ---
 
@@ -52,7 +72,3 @@ It does **not** attempt to:
 
 - GitHub repository: [https://github.com/morganzwest/Local-HubSpot-Emulator](https://github.com/morganzwest/Local-HubSpot-Emulator)
 - Issues and feature requests: [https://github.com/morganzwest/Local-HubSpot-Emulator/issues](https://github.com/morganzwest/Local-HubSpot-Emulator/issues)
-
-```
-
-```
