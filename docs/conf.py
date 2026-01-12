@@ -1,5 +1,13 @@
-project = "HubSpot Emulator - hsemulate"
+# -- Project information -----------------------------------------------------
+
+project = "HubSpot Emulator"
 author = "Morgan West"
+
+# Optional but recommended
+release = "latest"
+
+
+# -- General configuration ---------------------------------------------------
 
 extensions = [
     "myst_parser",
@@ -10,6 +18,18 @@ myst_enable_extensions = [
 ]
 
 templates_path = ["_templates"]
+
+exclude_patterns = []
+
+
+# -- HTML output -------------------------------------------------------------
+
+html_theme = "furo"
+
 html_static_path = ["_static"]
 
-html_theme = "sphinx_rtd_theme"
+html_theme_options = {
+    "source_repository": "https://github.com/morganzwest/hsemulator",
+    "source_branch": "main",
+    "source_directory": "docs/",
+}
