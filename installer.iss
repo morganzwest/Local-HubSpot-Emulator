@@ -9,10 +9,10 @@ AppVersion=0.1.1
 DefaultDirName={localappdata}\HSEmulate
 DisableProgramGroupPage=yes
 OutputDir=dist
-OutputBaseFilename=hsemulate-0.1.1-windows-x64
+OutputBaseFilename=hsemulate-0.2.0-windows-x64
 Compression=lzma
 SolidCompression=yes
-ArchitecturesInstallIn64BitMode=x64
+ArchitecturesInstallIn64BitMode=x64compatible
 PrivilegesRequired=lowest
 
 [Files]
