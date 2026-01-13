@@ -18,17 +18,26 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
 
       # -------------------
-      # Windows build
+      # Build (runs on both OSes)
       # -------------------
-      - name: Build Windows binary
-        if: matrix.os == 'windows-latest'
+      - name: Build Rust binary
         run: cargo build --release
 
+      # -------------------
+      # Windows installer
+      # -------------------
       - name: Build Windows installer (Inno Setup)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+
+      - name: Verify Windows outputs
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          Get-Item target/release/hsemulate.exe
+          Get-Item dist/*.exe
 
       - name: Upload Windows artifacts
         if: matrix.os == 'windows-latest'
@@ -36,19 +45,19 @@ jobs:
         with:
           name: windows
           path: |
-            target/release/hsemulator.exe
-            Output/*.exe
+            target/release/hsemulate.exe
+            dist/*.exe
 
       # -------------------
-      # Linux build
+      # Linux artifacts
       # -------------------
-      - name: Build Linux binary
+      - name: Verify Linux output
         if: matrix.os == 'ubuntu-latest'
-        run: cargo build --release
+        run: ls -lh target/release/hsemulate
 
       - name: Upload Linux artifact
         if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v4
         with:
           name: linux
-          path: target/release/hsemulator
+          path: target/release/hsemulate

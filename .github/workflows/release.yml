@@ -6,7 +6,7 @@ on:
       - 'v*'
 
 jobs:
-  build-and-release:
+  build:
     strategy:
       matrix:
         os: [windows-latest, ubuntu-latest]
@@ -15,38 +15,63 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: dtolnay/rust-toolchain@stable
 
-      # -------------------------
-      # Windows build
-      # -------------------------
-      - name: Build Windows binary
-        if: matrix.os == 'windows-latest'
+      # -------------------
+      # Build Rust binary
+      # -------------------
+      - name: Build
         run: cargo build --release
 
+      # -------------------
+      # Windows installer
+      # -------------------
       - name: Build Windows installer (Inno Setup)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
 
-      # -------------------------
-      # Linux build
-      # -------------------------
-      - name: Build Linux binary
-        if: matrix.os == 'ubuntu-latest'
-        run: cargo build --release
+      # -------------------
+      # Verify outputs
+      # -------------------
+      - name: Verify Windows outputs
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          Get-Item target/release/hsemulate.exe
+          Get-Item dist/*.exe
 
-      # -------------------------
-      # Create draft release + upload assets
-      # -------------------------
-      - name: Create draft GitHub release
+      - name: Verify Linux output
         if: matrix.os == 'ubuntu-latest'
+        run: ls -lh target/release/hsemulate
+
+      # -------------------
+      # Upload artifacts
+      # -------------------
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}
+          path: |
+            target/release/hsemulate*
+            dist/*.exe
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create draft GitHub release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
           files: |
-            target/release/hsemulator
-            ../windows-latest/target/release/hsemulator.exe
-            ../windows-latest/Output/*.exe
+            dist/windows-latest/target/release/hsemulate.exe
+            dist/windows-latest/dist/*.exe
+            dist/ubuntu-latest/target/release/hsemulate
