@@ -1,0 +1,52 @@
+name: Draft Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # -------------------------
+      # Windows build
+      # -------------------------
+      - name: Build Windows binary
+        if: matrix.os == 'windows-latest'
+        run: cargo build --release
+
+      - name: Build Windows installer (Inno Setup)
+        if: matrix.os == 'windows-latest'
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
+
+      # -------------------------
+      # Linux build
+      # -------------------------
+      - name: Build Linux binary
+        if: matrix.os == 'ubuntu-latest'
+        run: cargo build --release
+
+      # -------------------------
+      # Create draft release + upload assets
+      # -------------------------
+      - name: Create draft GitHub release
+        if: matrix.os == 'ubuntu-latest'
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          files: |
+            target/release/hsemulator
+            ../windows-latest/target/release/hsemulator.exe
+            ../windows-latest/Output/*.exe
