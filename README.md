@@ -128,7 +128,7 @@ Each run is isolated, deterministic, and fully observable.
 
 Issues, bug reports, and feature requests are welcome:
 
-👉 [https://github.com/morganzwest/Local-HubSpot-Emulator/issues](https://github.com/morganzwest/Local-HubSpot-Emulator/issues)
+👉 [https://github.com/morganzwest/hsemulator/issues](https://github.com/morganzwest/hsemulator/issues)
 
 ---
 
