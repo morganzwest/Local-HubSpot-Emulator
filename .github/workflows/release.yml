@@ -4,8 +4,10 @@ on:
   push:
     tags:
       - 'v*'
+
 permissions:
   contents: write
+
 jobs:
   build:
     strategy:
@@ -18,38 +20,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
 
-      # -------------------
-      # Build Rust binary
-      # -------------------
       - name: Build
         run: cargo build --release
 
-      # -------------------
-      # Windows installer
-      # -------------------
       - name: Build Windows installer (Inno Setup)
         if: matrix.os == 'windows-latest'
         shell: pwsh
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer.iss
 
-      # -------------------
-      # Verify outputs
-      # -------------------
-      - name: Verify Windows outputs
-        if: matrix.os == 'windows-latest'
-        shell: pwsh
-        run: |
-          Get-Item target/release/hsemulate.exe
-          Get-Item dist/*.exe
-
-      - name: Verify Linux output
-        if: matrix.os == 'ubuntu-latest'
-        run: ls -lh target/release/hsemulate
-
-      # -------------------
-      # Upload artifacts
-      # -------------------
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -68,11 +47,28 @@ jobs:
         with:
           path: dist
 
+      - name: Rename release assets with version
+        run: |
+          VERSION="${GITHUB_REF_NAME}"
+
+          mkdir -p release
+
+          # Windows CLI
+          cp dist/windows-latest/target/release/hsemulate.exe \
+             "release/hsemulator-windows-x64-${VERSION}.exe"
+
+          # Windows installer
+          cp dist/windows-latest/dist/*.exe \
+             "release/hsemulator-setup-windows-x64-${VERSION}.exe"
+
+          # Linux CLI
+          cp dist/ubuntu-latest/target/release/hsemulate \
+             "release/hsemulator-linux-x64-${VERSION}"
+
+          chmod +x "release/hsemulator-linux-x64-${VERSION}"
+
       - name: Create draft GitHub release
         uses: softprops/action-gh-release@v2
         with:
           draft: true
-          files: |
-            dist/windows-latest/target/release/hsemulate.exe
-            dist/windows-latest/dist/*.exe
-            dist/ubuntu-latest/target/release/hsemulate
+          files: release/*
