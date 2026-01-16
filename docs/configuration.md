@@ -227,10 +227,29 @@ budgets:
 
 ---
 
-## Validation Rules
+## Configuration Validation
 
-* Unknown fields are rejected
-* Missing required fields fail fast
-* Paths are resolved relative to `config.yaml`
+You can validate your configuration without running any code using:
 
-This is intentional to keep behaviour predictable.
+```bash
+hsemulate config validate
+````
+
+By default, this validates `./config.yaml`. To validate a different file:
+
+```bash
+hsemulate config validate --config path/to/config.yaml
+```
+
+### What validation checks
+
+The validation command loads the configuration and performs all structural and semantic checks, including:
+
+* Required fields (for example, `action.type` and `action.entry`)
+* Action type and file extension compatibility
+* Existence and validity of fixture files
+* Runtime configuration sanity
+* Output, budget, and assertion consistency
+
+If validation succeeds, the command exits with status `0` and prints a confirmation message.
+If validation fails, a clear, human-readable error is shown and the command exits non-zero.

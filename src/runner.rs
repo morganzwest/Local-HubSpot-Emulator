@@ -2,7 +2,7 @@
 
 use crate::checks::{assert_json, check_budgets, BudgetsResolved};
 use crate::cicd;
-use crate::cli::{Cli, Command};
+use crate::cli::{Cli, Command, ConfigCommand};
 use crate::config::{Assertion, Budgets, Config, Mode, OutputMode};
 use crate::metrics::{InvocationMetrics, MemoryTracker};
 use crate::promote;
@@ -58,6 +58,8 @@ pub async fn run(cli: Cli) -> Result<()> {
     match cli.command {
         Command::Init { language } => init_scaffold(language),
 
+        Command::Config { command } => handle_config_command(command),
+
         Command::Cicd { command } => cicd::handle(command),
 
         Command::Promote {
@@ -83,7 +85,9 @@ pub async fn run(cli: Cli) -> Result<()> {
 
             // CLI overrides
             if let Some(path) = action {
-                cfg.action.entry = path.to_string_lossy().to_string();
+                if let Some(action) = cfg.action.as_mut() {
+                    action.entry = path.to_string_lossy().to_string();
+                }
             }
             if !fixture.is_empty() {
                 cfg.fixtures = fixture
@@ -240,7 +244,9 @@ async fn execute_with_watch(config_path: PathBuf, assertion_file: Option<PathBuf
     // Initial load so we can watch action + fixtures too
     let cfg0 = Config::load(&config_path)?;
 
-    watcher.watch(Path::new(&cfg0.action.entry), RecursiveMode::NonRecursive)?;
+    let action = cfg0.action.as_ref().expect("config validated");
+    watcher.watch(Path::new(&action.entry), RecursiveMode::NonRecursive)?;
+
     for f in &cfg0.fixtures {
         watcher.watch(Path::new(f), RecursiveMode::NonRecursive)?;
     }
@@ -280,7 +286,9 @@ fn clear_screen() {
 /* ---------------- core execution ---------------- */
 
 async fn execute(cfg: Config, assertion_file: Option<PathBuf>) -> Result<ExecSummary> {
-    let action_file = PathBuf::from(&cfg.action.entry)
+    let action = cfg.action.as_ref().expect("config validated");
+
+    let action_file = PathBuf::from(&action.entry)
         .canonicalize()
         .context("Unable to resolve action entry")?;
 
@@ -717,7 +725,8 @@ fn write_output_file(path: &Path, payload: &Value) -> Result<()> {
 
 fn init_scaffold(language: Option<String>) -> Result<()> {
     if !Path::new("config.yaml").exists() {
-        std::fs::write("config.yaml", default_config_yaml())?;
+        std::fs::write("config.yaml", default_config_yaml(language.as_deref()))?;
+
         eprintln!("Created config.yaml");
     } else {
         eprintln!("config.yaml already exists (skipping)");
@@ -774,8 +783,9 @@ fn default_assertions_json() -> &'static str {
 "#
 }
 
-fn default_config_yaml() -> &'static str {
-    r#"
+fn default_config_yaml(language: Option<&str>) -> String {
+    match language.map(|l| l.to_lowercase()) {
+        Some(lang) if lang == "js" || lang == "javascript" => r#"
 version: 1
 
 action:
@@ -795,9 +805,6 @@ runtime:
 
 output:
   mode: simple # simple | pretty | stdout | file
-  # file: results.json
-
-# assertions_file: assertions.json
 
 snapshots:
   enabled: true
@@ -805,6 +812,70 @@ snapshots:
     - output.timestamp
     - meta.runId
 "#
+        .trim_start()
+        .to_string(),
+
+        Some(lang) if lang == "py" || lang == "python" => r#"
+version: 1
+
+action:
+  type: python
+  entry: actions/action.py
+
+fixtures:
+  - fixtures/event.json
+
+env:
+  HUBSPOT_TOKEN: "pat-your-token-here"
+  HUBSPOT_BASE_URL: "https://api.hubapi.com"
+
+runtime:
+  node: node
+  python: python
+
+output:
+  mode: simple # simple | pretty | stdout | file
+
+snapshots:
+  enabled: true
+  ignore:
+    - output.timestamp
+    - meta.runId
+"#
+        .trim_start()
+        .to_string(),
+
+        _ => r#"
+version: 1
+
+# You can specify action language here or later when creating action files.:
+# action:
+#   type: [js|python]
+#   entry: actions/action.[js|py]
+
+fixtures:
+  - fixtures/event.json
+
+env:
+  HUBSPOT_TOKEN: "pat-your-token-here"
+  HUBSPOT_BASE_URL: "https://api.hubapi.com"
+
+runtime:
+  node: node
+  python: python
+
+output:
+  mode: simple # simple | pretty | stdout | file
+
+snapshots:
+  enabled: true
+  ignore:
+    - output.timestamp
+    - meta.runId
+"#
+        .trim_start()
+        .to_string(),
+    }
 }
 
 fn default_fixture_json() -> &'static str {
@@ -847,4 +918,16 @@ def main(event):
         print(e)
         raise
 "#
+}
+
+fn handle_config_command(command: ConfigCommand) -> Result<()> {
+    match command {
+        ConfigCommand::Validate { config } => {
+            Config::load(&config)?;
+
+            println!("Config OK: {}", config.to_string_lossy());
+
+            Ok(())
+        }
+    }
 }
