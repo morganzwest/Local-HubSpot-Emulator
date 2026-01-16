@@ -159,7 +159,7 @@ fn default_node() -> String {
 }
 
 fn default_python() -> String {
-    "python3".to_string()
+    "python".to_string()
 }
 
 /// Optional performance budgets.
