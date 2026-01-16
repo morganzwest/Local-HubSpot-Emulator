@@ -24,14 +24,15 @@ use tempfile::tempdir;
 use tokio::process::Command as TokioCommand;
 
 #[derive(Debug)]
-struct ExecSummary {
-    ok: bool,
-    failures: Vec<String>,
-    runs: u64,
-    max_duration_ms: Option<u128>,
-    max_memory_kb: Option<u64>,
-    snapshots_ok: bool,
+pub(crate) struct ExecSummary {
+    pub ok: bool,
+    pub failures: Vec<String>,
+    pub runs: u64,
+    pub max_duration_ms: Option<u128>,
+    pub max_memory_kb: Option<u64>,
+    pub snapshots_ok: bool,
 }
+
 
 #[derive(Debug, serde::Serialize)]
 struct LastTestResult {
@@ -59,6 +60,11 @@ pub async fn run(cli: Cli) -> Result<()> {
         Command::Init { language } => init_scaffold(language),
 
         Command::Config { command } => handle_config_command(command),
+
+        Command::Runtime { listen } => {
+            crate::runtime::serve(&listen).await
+        }
+
 
         Command::Cicd { command } => cicd::handle(command),
 
@@ -285,7 +291,10 @@ fn clear_screen() {
 
 /* ---------------- core execution ---------------- */
 
-async fn execute(cfg: Config, assertion_file: Option<PathBuf>) -> Result<ExecSummary> {
+pub(crate) async fn execute(
+    cfg: Config,
+    assertion_file: Option<PathBuf>,
+) -> Result<ExecSummary> {
     let action = cfg.action.as_ref().expect("config validated");
 
     let action_file = PathBuf::from(&action.entry)

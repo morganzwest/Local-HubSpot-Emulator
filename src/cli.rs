@@ -90,6 +90,12 @@ pub enum Command {
         config: PathBuf,
     },
 
+    Runtime {
+        /// Address to listen on
+        #[arg(long, default_value = "127.0.0.1:8080")]
+        listen: String,
+    },
+
     /// Initialise a project scaffold.
     ///
     /// Creates:
