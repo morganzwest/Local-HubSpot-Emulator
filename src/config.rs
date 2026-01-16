@@ -14,7 +14,6 @@ pub struct Config {
     #[serde(default)]
     pub action: Option<Action>,
 
-
     /// One or more fixture files
     #[serde(default)]
     pub fixtures: Vec<String>,
@@ -278,7 +277,9 @@ impl Config {
         for f in &self.fixtures {
             let f_trim = f.trim();
             if f_trim.is_empty() {
-                anyhow::bail!("fixtures contains an empty path. Remove it or set a valid file path.");
+                anyhow::bail!(
+                    "fixtures contains an empty path. Remove it or set a valid file path."
+                );
             }
 
             let p = std::path::Path::new(f_trim);
@@ -372,5 +373,4 @@ impl Config {
 
         Ok(())
     }
-
 }

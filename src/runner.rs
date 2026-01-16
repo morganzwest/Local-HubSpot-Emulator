@@ -88,7 +88,6 @@ pub async fn run(cli: Cli) -> Result<()> {
                 if let Some(action) = cfg.action.as_mut() {
                     action.entry = path.to_string_lossy().to_string();
                 }
-
             }
             if !fixture.is_empty() {
                 cfg.fixtures = fixture
@@ -726,10 +725,7 @@ fn write_output_file(path: &Path, payload: &Value) -> Result<()> {
 
 fn init_scaffold(language: Option<String>) -> Result<()> {
     if !Path::new("config.yaml").exists() {
-        std::fs::write(
-            "config.yaml",
-            default_config_yaml(language.as_deref()),
-        )?;
+        std::fs::write("config.yaml", default_config_yaml(language.as_deref()))?;
 
         eprintln!("Created config.yaml");
     } else {
@@ -815,7 +811,9 @@ snapshots:
   ignore:
     - output.timestamp
     - meta.runId
-"#.trim_start().to_string(),
+"#
+        .trim_start()
+        .to_string(),
 
         Some(lang) if lang == "py" || lang == "python" => r#"
 version: 1
@@ -843,7 +841,9 @@ snapshots:
   ignore:
     - output.timestamp
     - meta.runId
-"#.trim_start().to_string(),
+"#
+        .trim_start()
+        .to_string(),
 
         _ => r#"
 version: 1
@@ -872,10 +872,11 @@ snapshots:
   ignore:
     - output.timestamp
     - meta.runId
-"#.trim_start().to_string(),
+"#
+        .trim_start()
+        .to_string(),
     }
 }
-
 
 fn default_fixture_json() -> &'static str {
     r#"
@@ -924,10 +925,7 @@ fn handle_config_command(command: ConfigCommand) -> Result<()> {
         ConfigCommand::Validate { config } => {
             Config::load(&config)?;
 
-            println!(
-                "Config OK: {}",
-                config.to_string_lossy()
-            );
+            println!("Config OK: {}", config.to_string_lossy());
 
             Ok(())
         }
