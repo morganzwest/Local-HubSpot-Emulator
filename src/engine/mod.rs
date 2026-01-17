@@ -25,6 +25,7 @@ pub struct ExecutionResult {
     pub max_duration_ms: Option<u128>,
     pub max_memory_kb: Option<u64>,
     pub snapshots_ok: bool,
+    
 }
 
 /* ---------------- validation ---------------- */

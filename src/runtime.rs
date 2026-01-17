@@ -19,6 +19,8 @@ use std::{net::SocketAddr, time::Duration};
 use tokio::net::TcpListener;
 use tower_http::trace::TraceLayer;
 use tracing::Span;
+use crate::engine::events::ExecutionEvent;
+use serde::Serialize;
 
 /* ---------------- server ---------------- */
 
@@ -67,6 +69,12 @@ struct ExecuteRequest {
     config: Config,
 }
 
+#[derive(Debug, Serialize)]
+struct ExecuteResponse {
+    summary: crate::engine::summary::ExecutionSummary,
+    events: Vec<ExecutionEvent>,
+}
+
 /* ---------------- endpoints ---------------- */
 
 async fn health() -> &'static str {
@@ -78,9 +86,12 @@ async fn execute(
     Json(req): Json<ExecuteRequest>,
 ) -> impl IntoResponse {
     let response: Response = match run_execution(req.config, req.mode).await {
-        Ok((summary, _sink)) => (
+        Ok((summary, sink)) => (
             StatusCode::OK,
-            Json(summary),
+            Json(ExecuteResponse {
+                summary,
+                events: sink.into_events(),
+            }),
         )
             .into_response(),
 
@@ -96,6 +107,7 @@ async fn execute(
 
     response
 }
+
 
 #[debug_handler]
 async fn validate(
