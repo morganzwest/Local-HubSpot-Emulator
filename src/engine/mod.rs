@@ -8,6 +8,7 @@ pub mod run;
 pub mod sink;
 pub mod summary;
 pub mod validate;
+pub mod validate_inline;
 
 pub use execute::execute_action;
 pub use mode::ExecutionMode;

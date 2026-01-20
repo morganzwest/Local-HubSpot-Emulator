@@ -29,6 +29,7 @@ mod shim;
 mod sinks;
 mod snapshot;
 mod util;
+mod inline;
 
 use anyhow::Result;
 use clap::Parser;
