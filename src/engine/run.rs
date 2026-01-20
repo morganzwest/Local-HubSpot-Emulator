@@ -99,6 +99,7 @@ fn validation_started(id: &ExecutionId) -> ExecutionEvent {
         execution_id: id.clone(),
         kind: ExecutionEventKind::ValidationStarted,
         timestamp: std::time::SystemTime::now(),
+        message: None,
     }
 }
 
@@ -107,5 +108,6 @@ fn validation_failed(id: &ExecutionId) -> ExecutionEvent {
         execution_id: id.clone(),
         kind: ExecutionEventKind::ValidationFailed,
         timestamp: std::time::SystemTime::now(),
+        message: None,
     }
 }
