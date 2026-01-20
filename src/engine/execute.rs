@@ -152,15 +152,35 @@ async fn invoke_once(
                 }
             }
             line = stderr_lines.next_line() => {
-                if let Some(l) = line? {
-                    sink.emit(ExecutionEvent {
-                        execution_id: execution_id.clone(),
-                        kind: ExecutionEventKind::Stderr,
-                        timestamp: SystemTime::now(),
-                        message: Some(l),
-                    });
-                }
-            }
+    if let Some(l) = line? {
+        let msg = l.trim_start();
+
+        if let Some(rest) = msg.strip_prefix("__HSE_ERR__ ") {
+            sink.emit(ExecutionEvent {
+                execution_id: execution_id.clone(),
+                kind: ExecutionEventKind::Stderr,
+                timestamp: SystemTime::now(),
+                message: Some(rest.to_string()),
+            });
+        } else if let Some(rest) = msg.strip_prefix("__HSE_LOG__ ") {
+            sink.emit(ExecutionEvent {
+                execution_id: execution_id.clone(),
+                kind: ExecutionEventKind::Stdout,
+                timestamp: SystemTime::now(),
+                message: Some(rest.to_string()),
+            });
+        } else {
+            // Fallback: treat untagged stderr as INFO
+            sink.emit(ExecutionEvent {
+                execution_id: execution_id.clone(),
+                kind: ExecutionEventKind::Stdout,
+                timestamp: SystemTime::now(),
+                message: Some(msg.to_string()),
+            });
+        }
+    }
+}
+
         }
     }
 

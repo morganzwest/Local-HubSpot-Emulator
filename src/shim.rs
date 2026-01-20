@@ -57,8 +57,16 @@ try {
 
 // Route logs to STDERR so STDOUT stays clean JSON
 const stderr = console.error;
-console.log = (...args) => stderr(...args);
-console.error = (...args) => stderr(...args);
+const rawStderr = console.error;
+
+console.log = (...args) => {
+  rawStderr("__HSE_LOG__ " + args.join(" "));
+};
+
+console.error = (...args) => {
+  rawStderr("__HSE_ERR__ " + args.join(" "));
+};
+
 
 let callbackPayload = null;
 const callback = (payload) => { callbackPayload = payload; };
@@ -145,6 +153,12 @@ def import_python_file(file_path: str):
     spec.loader.exec_module(mod)
     return mod
 
+def log(*args):
+    print("__HSE_LOG__", *args, file=sys.stderr)
+
+def error(*args):
+    print("__HSE_ERR__", *args, file=sys.stderr)
+
 def main():
     if len(sys.argv) < 3:
         fatal("Usage: python hs_python_runner.py <actionFile.py> <event.json>")
@@ -171,16 +185,16 @@ def main():
     err = None
 
     try:
-        # Redirect action prints to STDERR
-        with redirect_stdout(sys.stderr):
-            result = mod.main(event)
+        result = mod.main(event)
     except Exception as e:
+        error(str(e))
         ok = False
         err = {
             "type": "action",
             "message": str(e),
             "stack": traceback.format_exc()
         }
+
 
     sys.stdout.write(json.dumps({
         "ok": ok,
