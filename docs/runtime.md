@@ -1,15 +1,24 @@
 # Runtime HTTP API
 
-`hsemulator` exposes a **minimal HTTP runtime** for **validation and execution** of HubSpot custom code actions.
+`hsemulator` exposes a **minimal, engine-backed HTTP runtime** for **validating and executing HubSpot custom code actions**.
 
 The runtime is intentionally **thin**.
-All logic, safety rules, and execution behaviour live in the **engine**, not the API layer.
 
-The HTTP server exists to:
+All logic, validation rules, execution semantics, and determinism guarantees live in the **engine**, not the API layer.
+The HTTP API is a transport and orchestration surface only.
 
-1. Validate configuration safely
+---
+
+## Purpose of the Runtime
+
+The HTTP runtime exists to:
+
+1. Validate action configurations safely
 2. Execute actions deterministically
-3. Act as a control-plane target for orchestration
+3. Support UI-driven and remote execution
+4. Act as a control-plane target for orchestration
+
+It does **not** introduce new behaviour beyond the CLI.
 
 ---
 
@@ -17,32 +26,33 @@ The HTTP server exists to:
 
 The runtime follows these principles:
 
-* **One execution engine**
+* **Single execution engine**
 * **No duplicated logic**
-* **Validation is first-class**
+* **Validation is mandatory**
 * **No implicit execution**
 * **No hidden defaults**
-* **Local, CLI, and HTTP behave identically**
+* **Inline and filesystem execution behave identically**
+* **CLI, CI, and HTTP are behaviourally equivalent**
 
-If a config is invalid locally, it is invalid over HTTP.
+If a configuration is invalid locally, it is invalid over HTTP.
 
 ---
 
 ## Starting the Runtime
 
-Start the runtime server using:
+Start the runtime server with:
 
 ```bash
 hsemulate runtime
 ```
 
-Or specify a listen address:
+Specify a listen address:
 
 ```bash
 hsemulate runtime --listen 0.0.0.0:8080
 ```
 
-By default, the server listens on:
+Default address:
 
 ```
 http://127.0.0.1:8080
@@ -52,7 +62,7 @@ http://127.0.0.1:8080
 
 ## Authentication
 
-All runtime endpoints (except `/health`) are protected by **API key authentication**.
+All endpoints except `/health` are protected by **API key authentication**.
 
 ### Header
 
@@ -60,25 +70,25 @@ All runtime endpoints (except `/health`) are protected by **API key authenticati
 Authorization: Bearer <API_KEY>
 ```
 
-The API key is validated by the runtime middleware.
+Requests without a valid API key are rejected.
 
-Requests without a valid API key will be rejected.
+Authentication is enforced via middleware before request handling.
 
 ---
 
 ## Endpoints Overview
 
-| Endpoint    | Purpose                             |
-| ----------- | ----------------------------------- |
-| `/health`   | Liveness probe                      |
-| `/validate` | Validate config only (no execution) |
-| `/execute`  | Validate + execute (or dry-run)     |
+| Endpoint    | Purpose                          |
+| ----------- | -------------------------------- |
+| `/health`   | Liveness probe                   |
+| `/validate` | Validate filesystem config only  |
+| `/execute`  | Validate + execute inline config |
 
 ---
 
 ## `GET /health`
 
-Health check endpoint.
+Liveness probe.
 
 ### Request
 
@@ -92,23 +102,22 @@ GET /health
 ok
 ```
 
-This endpoint:
-
-* Requires **no authentication**
-* Performs **no checks**
-* Exists only for liveness probes
+* No authentication required
+* No checks performed
+* Intended for probes and load balancers only
 
 ---
 
 ## `POST /validate`
 
-Validate a configuration **without executing any code**.
+Validate a **filesystem-based config** without executing any code.
 
 This endpoint performs **static validation only**:
 
 * Schema correctness
 * Required fields
-* File existence
+* Action entry existence
+* Fixture existence and JSON validity
 * Runtime configuration
 * Budget sanity checks
 
@@ -118,7 +127,7 @@ No runtimes are spawned.
 
 ### Request Body
 
-`/validate` accepts a **raw config object**.
+`/validate` accepts a **filesystem-backed config object**.
 
 ```json
 {
@@ -145,11 +154,15 @@ No runtimes are spawned.
 }
 ```
 
-No `mode` field is supported here.
+Notes:
+
+* Paths are resolved relative to the runtime working directory
+* No `mode` field is accepted
+* No execution occurs
 
 ---
 
-### Successful Response
+### Successful Validation Response
 
 ```json
 {
@@ -188,45 +201,69 @@ Validation errors are:
 
 ## `POST /execute`
 
-Validate and execute a configuration.
+Validate and execute an **inline configuration**.
 
-This endpoint is the **canonical execution API** and supports **execution modes**.
+This is the **canonical execution API**.
 
-Execution **always runs validation first**.
+Execution always runs **validation first**.
 
 ---
 
 ### Request Body
 
-`/execute` accepts a **wrapped request object**.
+`/execute` accepts an **inline execution request**.
 
 ```json
 {
   "mode": "execute",
   "config": {
     "version": 1,
+
     "action": {
-      "type": "js",
-      "entry": "actions/action.js"
+      "language": "js",
+      "entry": "actions/action.js",
+      "source": "exports.main = async (event) => { return { ok: true }; }"
     },
+
     "fixtures": [
-      "fixtures/event.json"
+      {
+        "name": "fixtures/event.json",
+        "source": "{ \"input\": \"hello\" }"
+      }
     ],
+
     "env": {
       "HUBSPOT_TOKEN": "pat-test-token",
       "HUBSPOT_BASE_URL": "https://api.hubapi.com"
     },
+
     "runtime": {
       "node": "node",
       "python": "python"
     },
+
     "snapshots": {
       "enabled": true
     },
+
     "repeat": 1
   }
 }
 ```
+
+---
+
+### Inline Execution Model
+
+For `/execute`:
+
+1. Inline config is validated (no filesystem access)
+2. A temporary workspace is created
+3. Action and fixtures are materialised
+4. Execution runs via the same engine as CLI
+5. All events are collected and returned
+
+There is **no behavioural difference** between inline and filesystem execution.
 
 ---
 
@@ -250,7 +287,9 @@ If `mode` is omitted, it defaults to `execute`.
 }
 ```
 
-This performs **full validation** and **returns immediately** without executing code.
+* Performs full inline validation
+* Does not execute code
+* No runtimes spawned
 
 ---
 
@@ -258,16 +297,29 @@ This performs **full validation** and **returns immediately** without executing 
 
 ```json
 {
-  "mode": "execute",
-  "execution_id": "exec_abc123",
-  "result": {
-    "ok": true,
-    "runs": 1,
-    "failures": [],
-    "max_duration_ms": 842,
-    "max_memory_kb": 43120,
-    "snapshots_ok": true
-  }
+  "summary": {
+    "status": "executed",
+    "execution_id": "exec_abc123",
+    "duration_ms": 42
+  },
+  "events": [
+    {
+      "kind": "execution_created"
+    },
+    {
+      "kind": "validation_started"
+    },
+    {
+      "kind": "execution_started"
+    },
+    {
+      "kind": "stdout",
+      "data": "..."
+    },
+    {
+      "kind": "execution_completed"
+    }
+  ]
 }
 ```
 
@@ -275,17 +327,17 @@ This performs **full validation** and **returns immediately** without executing 
 
 ### Validation Failure via `/execute`
 
-If validation fails, execution is **short-circuited** automatically:
+If validation fails, execution is **short-circuited**:
 
 ```json
 {
-  "mode": "validate",
-  "execution_id": "exec_abc123",
-  "valid": false,
-  "errors": [
+  "summary": {
+    "status": "validation_failed",
+    "execution_id": "exec_abc123"
+  },
+  "events": [
     {
-      "code": "FIXTURE_INVALID_JSON",
-      "message": "Fixture is not valid JSON: fixtures/event.json"
+      "kind": "validation_failed"
     }
   ]
 }
@@ -297,15 +349,13 @@ No code is executed.
 
 ## Relationship Between `/validate` and `/execute`
 
-| Endpoint                      | Behaviour            |
-| ----------------------------- | -------------------- |
-| `/validate`                   | Convenience endpoint |
-| `/execute { mode: validate }` | Canonical dry-run    |
-| `/execute {}`                 | Validate + execute   |
+| Endpoint                      | Behaviour                    |
+| ----------------------------- | ---------------------------- |
+| `/validate`                   | Filesystem config validation |
+| `/execute { mode: validate }` | Canonical inline dry-run     |
+| `/execute {}`                 | Validate + execute inline    |
 
-Both use the **same validation engine**.
-
-There is **no behavioural drift** between them.
+Both paths share the **same validation and execution engine**.
 
 ---
 
@@ -314,10 +364,10 @@ There is **no behavioural drift** between them.
 The runtime returns:
 
 * `200 OK` for successful validation or execution
-* `400 Bad Request` for invalid requests or execution errors
+* `400 Bad Request` for invalid configs or execution errors
 * `401 Unauthorized` for missing or invalid API keys
 
-Errors are returned in a structured JSON format suitable for automation.
+Errors are structured and machine-readable.
 
 ---
 
@@ -325,10 +375,11 @@ Errors are returned in a structured JSON format suitable for automation.
 
 The runtime guarantees:
 
-* Validation and execution logic is identical to CLI
-* No execution without prior validation
-* No runtime processes spawned during dry-run
-* No implicit retries or side effects
+* Validation precedes execution
+* No execution during dry-run
+* No implicit retries
+* No hidden side effects
+* Identical behaviour across CLI, CI, and HTTP
 
 ---
 
@@ -336,11 +387,11 @@ The runtime guarantees:
 
 The HTTP runtime is intended for:
 
+* UI-driven execution
 * Control-plane orchestration
 * Managed runners
-* UI-driven configuration flows
 * Preflight validation
-* Remote execution
+* Remote execution environments
 
 It is **not** intended to replace the CLI for local development.
 
@@ -348,8 +399,8 @@ It is **not** intended to replace the CLI for local development.
 
 ## Best Practices
 
-* Use `/validate` for UI or CI preflight checks
-* Use `/execute { mode: validate }` when building orchestration systems
-* Treat `/execute` as the canonical API
+* Use `/validate` for filesystem-based preflight checks
+* Use `/execute { mode: validate }` for inline validation
+* Treat `/execute` as the canonical execution API
+* Never bypass validation
 * Never rely on implicit defaults
-* Do not bypass validation
