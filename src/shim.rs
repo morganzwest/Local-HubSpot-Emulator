@@ -35,6 +35,7 @@ function fatal(message, error = null) {
     ok: false,
     language: "node",
     callback: null,
+    outputFields: null,
     error: {
       type: "runtime",
       message,
@@ -96,9 +97,10 @@ if (typeof fn !== "function") {
 
 let ok = true;
 let error = null;
+let actionResult = null;
 
 try {
-  await fn(event, callback);
+  actionResult = await fn(event, callback);
 } catch (e) {
   ok = false;
   error = {
@@ -112,6 +114,7 @@ process.stdout.write(JSON.stringify({
   ok,
   language: "node",
   callback: callbackPayload,
+  outputFields: actionResult?.outputFields || null,
   error
 }));
 "#
@@ -150,6 +153,7 @@ def fatal(message, stack=None):
                 "ok": False,
                 "language": "python",
                 "result": None,
+                "outputFields": None,
                 "error": {
                     "type": "runtime",
                     "message": message,
@@ -204,6 +208,7 @@ def main():
 
     ok = True
     result = None
+    output_fields = None
     error = None
 
     # Capture ALL stdout produced by user code
@@ -231,6 +236,10 @@ def main():
             if line.strip():
                 emit_log(line)
 
+    # Extract outputFields from result if present
+    if isinstance(result, dict):
+        output_fields = result.get("outputFields")
+
     # Emit final JSON — MUST be the only STDOUT output
     sys.stdout.write(
         json.dumps(
@@ -238,6 +247,7 @@ def main():
                 "ok": ok,
                 "language": "python",
                 "result": result,
+                "outputFields": output_fields,
                 "error": error,
             }
         )

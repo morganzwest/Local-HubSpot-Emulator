@@ -42,6 +42,7 @@ pub async fn execute_action(
     let mut failures: Vec<String> = Vec::new();
     let mut max_duration_ms: Option<u128> = None;
     let mut max_memory_kb: Option<u64> = None;
+    let mut output_fields: Option<serde_json::Map<String, Value>> = None;
 
     for fixture in &cfg.fixtures {
         let event: Value = serde_json::from_str(
@@ -57,6 +58,10 @@ pub async fn execute_action(
 
             let (output, metrics) =
                 invoke_once(&cfg, &execution_id, &action_file, &event, sink).await?;
+
+            if let Some(fields) = output.get("outputFields").and_then(|v| v.as_object()) {
+                output_fields = Some(fields.clone());
+            }
 
             max_duration_ms = Some(
                 max_duration_ms
@@ -86,6 +91,7 @@ pub async fn execute_action(
         max_duration_ms,
         max_memory_kb,
         snapshots_ok: true,
+        outputFields: output_fields,
     })
 }
 

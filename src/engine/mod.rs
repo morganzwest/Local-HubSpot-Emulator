@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 
 pub mod events;
 pub mod execute;
@@ -25,6 +26,7 @@ pub struct ExecutionResult {
     pub max_duration_ms: Option<u128>,
     pub max_memory_kb: Option<u64>,
     pub snapshots_ok: bool,
+    pub outputFields: Option<serde_json::Map<String, Value>>,
 }
 
 /* ---------------- validation ---------------- */
