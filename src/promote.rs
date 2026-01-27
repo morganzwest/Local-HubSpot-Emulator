@@ -10,6 +10,8 @@ use serde_json::Value as JsonValue;
 use sha2::{Digest, Sha256};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
+use crate::types::PromoteSelector;
+use serde_json::json;
 
 const HUBSPOT_BASE_URL: &str = "https://api.hubapi.com";
 
@@ -694,4 +696,76 @@ fn replace_hash_marker(source: &str, new_marker_line: &str) -> String {
     }
 
     out.trim_end().to_string()
+}
+
+pub async fn promote_inline(
+    token: &str,
+    workflow_id: &str,
+    selector: &PromoteSelector,
+    source_code: &str,
+    runtime_override: Option<&str>,
+    force: bool,
+    dry_run: bool,
+) -> Result<serde_json::Value> {
+    let client = reqwest::Client::new();
+    let headers = hubspot_headers(token)?;
+
+    // Canonicalize + hash
+    let canonical = strip_hash_marker(source_code);
+    let hash = sha256_hex(canonical.as_bytes());
+    let promoted_source = inject_hash_marker(&canonical, &hash);
+
+    // Fetch workflow
+    let flow = hubspot_get_flow(&client, &headers, workflow_id).await?;
+
+    // Locate action
+    let action_index = find_target_action_index(
+        &flow,
+        &CicdSelector {
+            selector_type: selector.selector_type.clone(),
+            value: selector.value.clone(),
+            require_unique: Some(true),
+        },
+    )?;
+
+    // Drift guard
+    let existing = get_action_source_code(&flow, action_index)?;
+    if let Some(existing_hash) = extract_hash_marker(&existing) {
+        if existing_hash == hash {
+            return Ok(json!({
+                "ok": true,
+                "status": "noop",
+                "hash": hash
+            }));
+        }
+    } else if !force {
+        bail!("Target action missing hsemulator-sha marker");
+    }
+
+    // Build payload
+    let updated_flow = build_updated_flow_payload(
+        &flow,
+        action_index,
+        &promoted_source,
+        runtime_override,
+    )?;
+
+    if dry_run {
+        return Ok(json!({
+            "ok": true,
+            "dry_run": true,
+            "workflow_id": workflow_id,
+            "hash": hash,
+            "action_index": action_index
+        }));
+    }
+
+    let result = hubspot_put_flow(&client, &headers, workflow_id, &updated_flow).await?;
+
+    Ok(json!({
+        "ok": true,
+        "workflow_id": workflow_id,
+        "hash": hash,
+        "revision_id": result.get("revisionId")
+    }))
 }

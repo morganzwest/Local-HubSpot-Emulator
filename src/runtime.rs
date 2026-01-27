@@ -8,7 +8,9 @@ use crate::{
     },
     inline::InlineConfig,
 };
-
+use crate::types::PromoteRequest;
+use serde_json::json;
+use crate::promote::promote_inline;
 use crate::engine::events::ExecutionEvent;
 
 use axum::{
@@ -26,6 +28,8 @@ use std::{net::SocketAddr, time::Duration};
 use tokio::net::TcpListener;
 use tower_http::{cors::{Any, CorsLayer}, trace::TraceLayer};
 use tracing::Span;
+use axum::extract::DefaultBodyLimit;
+
 
 
 /* ---------------- server ---------------- */
@@ -42,12 +46,14 @@ pub async fn serve(addr: &str) -> anyhow::Result<()> {
     let protected = Router::new()
         .route("/execute", post(execute))
         .route("/validate", post(validate))
+    .route("/promote", post(promote))
         .layer(middleware::from_fn(api_key_auth));
 
     let app = Router::new()
         .route("/health", get(health))
         .merge(protected)
         .layer(cors)
+        .layer(DefaultBodyLimit::max(1024 * 1024)) // 1MB
         .layer(
             TraceLayer::new_for_http()
                 .make_span_with(|req: &Request<Body>| {
@@ -95,6 +101,60 @@ struct ExecuteResponse {
 async fn health() -> &'static str {
     "ok"
 }
+
+#[debug_handler]
+async fn promote(
+    Json(req): Json<crate::types::PromoteRequest>
+) -> impl IntoResponse {
+    // 1. Validate selector
+    if req.selector.selector_type != "secret" {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "ok": false,
+                "error": "Only selector.type = 'secret' is supported"
+            })),
+        )
+        .into_response();
+    }
+
+    // 2. Validate token presence
+    if req.hubspot_token.trim().is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "ok": false,
+                "error": "hubspot_token must be provided"
+            })),
+        )
+        .into_response();
+    }
+
+    // 3. Promote
+    match promote_inline(
+        &req.hubspot_token,
+        &req.workflow_id,
+        &req.selector,
+        &req.source_code,
+        req.runtime.as_deref(),
+        req.force,
+        req.dry_run,
+    )
+    .await
+    {
+        Ok(result) => (StatusCode::OK, Json(result)).into_response(),
+        Err(e) => (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "ok": false,
+                "error": e.to_string()
+            })),
+        )
+        .into_response(),
+    }
+}
+
+
 
 #[debug_handler]
 async fn execute(Json(req): Json<ExecuteRequest>) -> impl IntoResponse {

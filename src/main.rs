@@ -29,6 +29,7 @@ mod shim;
 mod sinks;
 mod snapshot;
 mod util;
+mod types;
 mod inline;
 
 use anyhow::Result;
